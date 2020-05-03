@@ -1,0 +1,45 @@
+This program should create a random playlist based on the folders
+in a dir. I.E. we don't want to shuffle by episode (or song) we want
+to shuffle by series (or album). This will be done recursively with a
+binary tree. The tree will contain a path field, an included field (has
+this path been added to the list yet?), and a pointer to the next node.
+
+For now we will make the top level dir configurable only at compile
+time. And the program will only provide a shuffled list (maybe this
+could be a commandline flag in the future).
+
+The algorithm will be fairly simple and ineffiecent for now but could
+be improved later.
+
+In the future:
+- Specify top level dir on commandline?
+- Toggle shuffling?
+- Output the list as a file? To stdout?
+
+
+Tree Layout:
+If we have a dir layout like this:
+a
+a/b
+a/b/c
+a/d
+a/e/f
+
+The tree should look like this:
+
+ a
+ |
+ |
+ > b
+   |
+   |
+   > c
+     |
+     |
+   d <
+   |
+   v
+   e
+   |
+   |
+   > f
