@@ -6,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "config.h"
+
 struct node {
 	char path[PATH_MAX];	/* Path containing media files */
 	int a;			/* Applied */
