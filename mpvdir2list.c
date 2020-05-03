@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include "config.h"
@@ -101,8 +102,9 @@ addfile(struct node *node, struct list *list, const char *file)
 static struct node *
 subdir(struct node *node)
 {
-	DIR *dir, *tmpdir;
+	DIR *dir;
 	struct dirent *ent;
+	struct stat sb;
 	char *s, *t;
 
 	if (!(dir = opendir(node->path)))
@@ -120,9 +122,8 @@ subdir(struct node *node)
 		xstrcat(t, s, PATH_MAX);
 		xstrcat(t, ent->d_name, PATH_MAX);
 
-		if ((tmpdir = opendir(t))) {
-			closedir(tmpdir);
-
+		stat(t, &sb);
+		if (S_ISDIR(sb.st_mode)) {
 			if (!valid_dir(ent->d_name)) {
 				free(t);
 				continue;
