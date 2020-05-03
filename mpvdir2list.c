@@ -56,10 +56,10 @@ xstrcat(char *dst, const char *src, size_t dst_sz)
 static int
 valid_dir(const char *dir)
 {
-	if (!strcmp(dir, ".") && !strcmp(dir, ".."))
-		return 1;
+	if (!strcmp(dir, ".") || !strcmp(dir, ".."))
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 static int
@@ -103,32 +103,41 @@ subdir(struct node *node)
 {
 	DIR *dir, *tmpdir;
 	struct dirent *ent;
-	char *s = xmalloc(PATH_MAX);
-
-	s[0] = 0;
+	char *s, *t;
 
 	if (!(dir = opendir(node->path)))
 		die("opendir(): failed to open: %s\n", node->path);
 
+	s = xmalloc(PATH_MAX);
+	s[0] = 0;
 	xstrcat(s, node->path, PATH_MAX);
 	xstrcat(s, "/", PATH_MAX);
 
 	while ((ent = readdir(dir))) {
-		if ((tmpdir = opendir(ent->d_name))) {
+
+		t = xmalloc(PATH_MAX);
+		t[0] = 0;
+		xstrcat(t, s, PATH_MAX);
+		xstrcat(t, ent->d_name, PATH_MAX);
+
+		if ((tmpdir = opendir(t))) {
 			closedir(tmpdir);
 
-			if (!valid_dir(ent->d_name))
-				break;
-
-			xstrcat(s, ent->d_name, PATH_MAX);
+			if (!valid_dir(ent->d_name)) {
+				free(t);
+				continue;
+			}
 
 			node->next = xmalloc(sizeof(struct node));
-			xstrcat(node->next->path, s, PATH_MAX);
+			node->next->path[0] = 0;
+			xstrcat(node->next->path, t, PATH_MAX);
+			node->next->a = 0;
 			node->next->next = NULL;
 
 			/* recurse into subdir */
 			node = subdir(node->next);
 		}
+		free(t);
 	}
 	closedir(dir);
 	free(s);
