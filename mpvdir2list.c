@@ -164,10 +164,14 @@ mklist(struct node *node, struct list *list)
 }
 
 static void
-recurse(struct node *node)
+printlist(struct list *list)
 {
-	subdir(node);
-	mklist(node, list_head);
+	/* FIXME: we are allocating an extra list ptr */
+	if (!list->next)
+		return;
+
+	fprintf(stdout, "'%s'\n", list->elem);
+	printlist(list->next);
 }
 
 int
@@ -185,7 +189,10 @@ main(void)
 
 	srand(time(NULL));
 
-	recurse(node_head);
+	subdir(node_head);
+	mklist(node_head, list_head);
+
+	printlist(list_head);
 
 	return 0;
 }
