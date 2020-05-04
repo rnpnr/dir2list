@@ -1,4 +1,2 @@
-- Stop wasting PATH_MAX bytes per node
 - Sort Directory entries
 - FIXME note
-- use realloc in xstrcat instead of failing

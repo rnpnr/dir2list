@@ -1,5 +1,4 @@
 #include <dirent.h>
-#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +9,7 @@
 #include "config.h"
 
 struct node {
-	char path[PATH_MAX];	/* Path containing media files */
+	char *path;		/* Path containing media files */
 	int a;			/* Applied */
 	struct node *next;	/* next node */
 };
@@ -48,14 +47,6 @@ xmalloc(size_t s)
 	return p;		
 }
 
-static void
-xstrcat(char *dst, const char *src, size_t dst_sz)
-{
-	if (!(dst_sz - strlen(dst) - strlen(src) - 1 > 0))
-		die("Path too long\n");
-	strcat(dst, src);
-}
-
 static int
 valid_dir(const char *dir)
 {
@@ -86,11 +77,7 @@ addfile(struct node *node, struct list *list, const char *file)
 
 	len = strlen(node->path) + strlen(file) + 2;
 	s = xmalloc(len);
-	s[0] = 0;
-
-	strcat(s, node->path);
-	strcat(s, "/");
-	strcat(s, file);
+	snprintf(s, len, "%s/%s", node->path, file);
 
 	list->elem = s;
 	list->next = xmalloc(sizeof(struct list));
@@ -108,21 +95,20 @@ subdir(struct node *node)
 	struct dirent *ent;
 	struct stat sb;
 	char *s, *t;
+	size_t s_len, t_len;
 
 	if (!(dir = opendir(node->path)))
 		die("opendir(): failed to open: %s\n", node->path);
 
-	s = xmalloc(PATH_MAX);
-	s[0] = 0;
-	xstrcat(s, node->path, PATH_MAX);
-	xstrcat(s, "/", PATH_MAX);
+	s_len = strlen(node->path) + 2;
+	s = xmalloc(s_len);
+	s_len = snprintf(s, s_len, "%s/", node->path);
 
 	while ((ent = readdir(dir))) {
 
-		t = xmalloc(PATH_MAX);
-		t[0] = 0;
-		xstrcat(t, s, PATH_MAX);
-		xstrcat(t, ent->d_name, PATH_MAX);
+		t_len = s_len + strlen(ent->d_name) + 1;
+		t = xmalloc(t_len);
+		t_len = snprintf(t, t_len, "%s%s", s, ent->d_name);
 
 		stat(t, &sb);
 		if (S_ISDIR(sb.st_mode)) {
@@ -132,8 +118,8 @@ subdir(struct node *node)
 			}
 
 			node->next = xmalloc(sizeof(struct node));
-			node->next->path[0] = 0;
-			xstrcat(node->next->path, t, PATH_MAX);
+			node->next->path = xmalloc(t_len + 1);
+			node->next->path = strcpy(node->next->path, t);
 			node->next->a = 0;
 			node->next->next = NULL;
 
@@ -195,7 +181,8 @@ main(void)
 	node_head = xmalloc(sizeof(struct node));
 	list_head = xmalloc(sizeof(struct list));
 
-	xstrcat(node_head->path, topdir, PATH_MAX);
+	node_head->path = xmalloc(strlen(topdir) + 1);
+	node_head->path = strcpy(node_head->path, topdir);
 	node_head->a = 0;
 	node_head->next = NULL;
 
