@@ -14,8 +14,6 @@ be improved later.
 In the future:
 - Specify top level dir on commandline?
 - Toggle shuffling?
-- Output the list as a file? To stdout?
-
 
 Tree Layout:
 If we have a dir layout like this:
