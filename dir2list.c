@@ -23,6 +23,8 @@ struct list {
 static struct node *node_head;
 static struct list *list_head;
 
+static int node_elems = 1;
+
 static void
 die(const char *fmt, ...)
 {
@@ -135,6 +137,8 @@ subdir(struct node *node)
 			node->next->a = 0;
 			node->next->next = NULL;
 
+			node_elems++;
+
 			/* recurse into subdir */
 			node = subdir(node->next);
 		}
@@ -152,25 +156,26 @@ mklist(struct node *node, struct list *list)
 {
 	DIR *dir;
 	struct dirent *ent;
+	struct node *o_node = node;
+	int i, j;
+	for (i = node_elems; i > 0;) {
+		for (j = rand() % node_elems; node && j > 0; j--)
+			node = node->next;
+		if (!node || node->a) {
+			node = o_node;
+			continue;
+		}
 
-	if (!node)
-		return;
+		if (!(dir = opendir(node->path)))
+			die("opendir(): failed to open: %s\n", node->path);
 
-	/* allocated or "dumb" randomization */
-	if (node->a || (rand() % 100) < 77) {
-		mklist(node->next, list);
-		return;
+		while ((ent = readdir(dir)))
+			if (valid_file(ent->d_name))
+				list = addfile(node, list, ent->d_name);
+		node->a = 1;
+		i--;
+		node = o_node;
 	}
-
-	if (!(dir = opendir(node->path)))
-		die("opendir(): failed to open: %s\n", node->path);
-
-	while ((ent = readdir(dir)))
-		if (valid_file(ent->d_name))
-			list = addfile(node, list, ent->d_name);
-
-	node->a = 1;
-	mklist(node->next, list);
 }
 
 static void
