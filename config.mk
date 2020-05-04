@@ -1,7 +1,6 @@
 PREFIX = /usr/local
 
-CPPFLAGS = -D_POSIX_C_SOURCE
-CFLAGS = -O2 -std=c99 -Wall -pedantic $(CPPFLAGS)
+CFLAGS = -O2 -std=c89 -Wall -pedantic
 LDFLAGS = -s -static
 
 CC = cc
