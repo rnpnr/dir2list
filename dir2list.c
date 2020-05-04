@@ -100,15 +100,16 @@ subdir(struct node *node)
 	if (!(dir = opendir(node->path)))
 		die("opendir(): failed to open: %s\n", node->path);
 
-	s_len = strlen(node->path) + 2;
+	/* node changes in while() but we need this first path */
+	s_len = strlen(node->path) + 1;
 	s = xmalloc(s_len);
-	s_len = snprintf(s, s_len, "%s/", node->path);
+	s_len = snprintf(s, s_len, "%s", node->path);
 
 	while ((ent = readdir(dir))) {
 
-		t_len = s_len + strlen(ent->d_name) + 1;
+		t_len = s_len + strlen(ent->d_name) + 2;
 		t = xmalloc(t_len);
-		t_len = snprintf(t, t_len, "%s%s", s, ent->d_name);
+		t_len = snprintf(t, t_len, "%s/%s", s, ent->d_name);
 
 		stat(t, &sb);
 		if (S_ISDIR(sb.st_mode)) {
