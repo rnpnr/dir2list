@@ -171,7 +171,7 @@ printlist(struct list *list)
 	if (!list->next)
 		return;
 
-	fprintf(stdout, "'%s'\n", list->elem);
+	fprintf(stdout, "%s\n", list->elem);
 	printlist(list->next);
 }
 
