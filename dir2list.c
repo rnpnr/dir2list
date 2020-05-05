@@ -19,6 +19,10 @@ struct list {
 	struct list *next;
 };
 
+struct entry {
+	char *name;
+};
+
 static struct node *node_head;
 static struct list *list_head;
 
@@ -47,10 +51,11 @@ xmalloc(size_t s)
 	return p;		
 }
 
-static void
-sort(char **files, size_t elems)
+static int
+namecmp(const void *va, const void *vb)
 {
-	return;
+	const struct entry *a = va, *b = vb;
+	return strcmp(a->name, b->name);
 }
 
 static int
@@ -80,7 +85,8 @@ addfiles(const char *path, struct list *list)
 {
 	DIR *dir;
 	struct dirent *ent;
-	char *s, **files;
+	struct entry *fents;
+	char *s;
 	int i;
 	size_t len, n_files = 0;
 
@@ -98,7 +104,7 @@ addfiles(const char *path, struct list *list)
 
 	rewinddir(dir);
 
-	files = xmalloc(sizeof(char *) * n_files);
+	fents = xmalloc(sizeof(struct entry) * n_files);
 
 	for (i = 0; i < n_files;) {
 		if (!(ent = readdir(dir)))
@@ -110,21 +116,20 @@ addfiles(const char *path, struct list *list)
 		len = strlen(path) + strlen(ent->d_name) + 2;
 		s = xmalloc(len);
 		snprintf(s, len, "%s/%s", path, ent->d_name);
-		files[i] = s;
+		fents[i].name = s;
 
 		i++;
 	}
 	closedir(dir);
 
-	/* TODO */
-	sort(files, n_files);
+	qsort(fents, n_files, sizeof(struct entry), namecmp);
 
 	for (i = 0; i < n_files; i++) {
-		list->elem = files[i];
+		list->elem = fents[i].name;
 		list->next = xmalloc(sizeof(struct list));
 		list = list->next;
 	}
-	free(files);
+	free(fents);
 
 	list->next = NULL;
 
