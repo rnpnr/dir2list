@@ -1,12 +1,16 @@
 #include <dirent.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 
 #include "config.h"
+
+/* sqrt(SIZE_MAX + 1): for (a < this; b < this) a * b <= SIZE_MAX */
+#define MUL_NO_OVERFLOW (1UL << (sizeof(size_t) * 4))
 
 struct node {
 	char *path;		/* Path containing media files */
@@ -51,6 +55,16 @@ xmalloc(size_t s)
 	return p;		
 }
 
+static void *
+reallocarray(void *p, size_t n, size_t s)
+{
+	if ((n >= MUL_NO_OVERFLOW || s >= MUL_NO_OVERFLOW)
+	    && n > 0 && SIZE_MAX / n < s)
+		die("reallocarray(): Out of Memory\n");
+
+	return realloc(p, n * s);
+}
+
 static int
 namecmp(const void *va, const void *vb)
 {
@@ -85,7 +99,7 @@ addfiles(const char *path, struct list *list)
 {
 	DIR *dir;
 	struct dirent *dent;
-	struct entry *fents;
+	struct entry *fents = NULL;
 	char *s;
 	int i;
 	size_t len, n = 0;
@@ -93,34 +107,21 @@ addfiles(const char *path, struct list *list)
 	if (!(dir = opendir(path)))
 		die("opendir(): failed to open: %s\n", path);
 
-	while ((dent = readdir(dir)))
-		if (valid_file(dent->d_name))
-			n++;
-
-	if (!n) {
-		closedir(dir);
-		return list;
-	}
-
-	rewinddir(dir);
-
-	fents = xmalloc(sizeof(struct entry) * n);
-
-	for (i = 0; i < n;) {
-		if (!(dent = readdir(dir)))
-			die("readdir(): end of dir: %s\n", path);
-
+	while ((dent = readdir(dir))) {
 		if (!valid_file(dent->d_name))
 			continue;
+
+		fents = reallocarray(fents, n + 1, sizeof(struct entry));
 
 		len = strlen(path) + strlen(dent->d_name) + 2;
 		s = xmalloc(len);
 		snprintf(s, len, "%s/%s", path, dent->d_name);
-		fents[i].name = s;
-
-		i++;
+		fents[n++].name = s;
 	}
 	closedir(dir);
+
+	if (!n)
+		return list;
 
 	qsort(fents, n, sizeof(struct entry), namecmp);
 
