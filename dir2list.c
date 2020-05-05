@@ -84,47 +84,47 @@ static struct list *
 addfiles(const char *path, struct list *list)
 {
 	DIR *dir;
-	struct dirent *ent;
+	struct dirent *dent;
 	struct entry *fents;
 	char *s;
 	int i;
-	size_t len, n_files = 0;
+	size_t len, n = 0;
 
 	if (!(dir = opendir(path)))
 		die("opendir(): failed to open: %s\n", path);
 
-	while ((ent = readdir(dir)))
-		if (valid_file(ent->d_name))
-			n_files++;
+	while ((dent = readdir(dir)))
+		if (valid_file(dent->d_name))
+			n++;
 
-	if (!n_files) {
+	if (!n) {
 		closedir(dir);
 		return list;
 	}
 
 	rewinddir(dir);
 
-	fents = xmalloc(sizeof(struct entry) * n_files);
+	fents = xmalloc(sizeof(struct entry) * n);
 
-	for (i = 0; i < n_files;) {
-		if (!(ent = readdir(dir)))
+	for (i = 0; i < n;) {
+		if (!(dent = readdir(dir)))
 			die("readdir(): end of dir: %s\n", path);
 
-		if (!valid_file(ent->d_name))
+		if (!valid_file(dent->d_name))
 			continue;
 
-		len = strlen(path) + strlen(ent->d_name) + 2;
+		len = strlen(path) + strlen(dent->d_name) + 2;
 		s = xmalloc(len);
-		snprintf(s, len, "%s/%s", path, ent->d_name);
+		snprintf(s, len, "%s/%s", path, dent->d_name);
 		fents[i].name = s;
 
 		i++;
 	}
 	closedir(dir);
 
-	qsort(fents, n_files, sizeof(struct entry), namecmp);
+	qsort(fents, n, sizeof(struct entry), namecmp);
 
-	for (i = 0; i < n_files; i++) {
+	for (i = 0; i < n; i++) {
 		list->elem = fents[i].name;
 		list->next = xmalloc(sizeof(struct list));
 		list = list->next;
