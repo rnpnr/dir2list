@@ -47,6 +47,12 @@ xmalloc(size_t s)
 	return p;		
 }
 
+static void
+sort(char **files, size_t elems)
+{
+	return;
+}
+
 static int
 valid_dir(const char *dir)
 {
@@ -70,21 +76,59 @@ valid_file(const char *file)
 }
 
 static struct list *
-addfile(struct node *node, struct list *list, const char *file)
+addfiles(const char *path, struct list *list)
 {
-	char *s;
-	size_t len;
+	DIR *dir;
+	struct dirent *ent;
+	char *s, **files;
+	int i;
+	size_t len, n_files = 0;
 
-	len = strlen(node->path) + strlen(file) + 2;
-	s = xmalloc(len);
-	snprintf(s, len, "%s/%s", node->path, file);
+	if (!(dir = opendir(path)))
+		die("opendir(): failed to open: %s\n", path);
 
-	list->elem = s;
-	list->next = xmalloc(sizeof(struct list));
-	list->next->elem = NULL;
-	list->next->next = NULL;
+	while ((ent = readdir(dir)))
+		if (valid_file(ent->d_name))
+			n_files++;
 
-	return list->next;
+	if (!n_files) {
+		closedir(dir);
+		return list;
+	}
+
+	rewinddir(dir);
+
+	files = xmalloc(sizeof(char *) * n_files);
+
+	for (i = 0; i < n_files;) {
+		if (!(ent = readdir(dir)))
+			die("readdir(): end of dir: %s\n", path);
+
+		if (!valid_file(ent->d_name))
+			continue;
+
+		len = strlen(path) + strlen(ent->d_name) + 2;
+		s = xmalloc(len);
+		snprintf(s, len, "%s/%s", path, ent->d_name);
+		files[i] = s;
+
+		i++;
+	}
+	closedir(dir);
+
+	/* TODO */
+	sort(files, n_files);
+
+	for (i = 0; i < n_files; i++) {
+		list->elem = files[i];
+		list->next = xmalloc(sizeof(struct list));
+		list = list->next;
+	}
+	free(files);
+
+	list->next = NULL;
+
+	return list;
 }
 
 /* Fill out the next field for all nodes */
@@ -141,27 +185,21 @@ subdir(struct node *node)
 static void
 mklist(struct node *node, struct list *list)
 {
-	DIR *dir;
-	struct dirent *ent;
 	struct node *o_node = node;
 	int i, j;
 	for (i = node_elems; i > 0;) {
 		for (j = rand() % node_elems; node && j > 0; j--)
 			node = node->next;
+
 		if (!node || node->a) {
 			node = o_node;
 			continue;
 		}
 
-		if (!(dir = opendir(node->path)))
-			die("opendir(): failed to open: %s\n", node->path);
-
-		while ((ent = readdir(dir)))
-			if (valid_file(ent->d_name))
-				list = addfile(node, list, ent->d_name);
+		list = addfiles(node->path, list);
 		node->a = 1;
-		i--;
 		node = o_node;
+		i--;
 	}
 }
 
