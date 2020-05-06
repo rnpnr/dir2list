@@ -18,19 +18,15 @@ struct node {
 	struct node *next;	/* next node */
 };
 
-struct list {
-	char *elem;
-	struct list *next;
-};
-
 struct entry {
 	char *name;
 };
 
 static struct node *node_head;
-static struct list *list_head;
+static struct entry *ents;
 
-static int node_elems = 1;
+static size_t node_elems;
+static size_t entries;
 
 static void
 die(const char *fmt, ...)
@@ -94,8 +90,8 @@ valid_file(const char *file)
 	return 0;
 }
 
-static struct list *
-addfiles(const char *path, struct list *list)
+static void
+addfiles(const char *path)
 {
 	DIR *dir;
 	struct dirent *dent;
@@ -121,20 +117,16 @@ addfiles(const char *path, struct list *list)
 	closedir(dir);
 
 	if (!n)
-		return list;
+		return;
 
 	qsort(fents, n, sizeof(struct entry), namecmp);
 
-	for (i = 0; i < n; i++) {
-		list->elem = fents[i].name;
-		list->next = xmalloc(sizeof(struct list));
-		list = list->next;
-	}
+	ents = reallocarray(ents, entries + n, sizeof(struct entry));
+
+	for (i = 0; i < n; i++, entries++)
+		ents[entries].name = fents[i].name;
+
 	free(fents);
-
-	list->next = NULL;
-
-	return list;
 }
 
 /* Fill out the next field for all nodes */
@@ -189,7 +181,7 @@ subdir(struct node *node)
 }
 
 static void
-mklist(struct node *node, struct list *list)
+mklist(struct node *node)
 {
 	struct node *o_node = node;
 	int i, j;
@@ -202,7 +194,7 @@ mklist(struct node *node, struct list *list)
 			continue;
 		}
 
-		list = addfiles(node->path, list);
+		addfiles(node->path);
 		node->a = 1;
 		node = o_node;
 		i--;
@@ -210,36 +202,31 @@ mklist(struct node *node, struct list *list)
 }
 
 static void
-printlist(struct list *list)
+printlist(void)
 {
-	/* FIXME: we are allocating an extra list ptr */
-	if (!list->next)
-		return;
-
-	fprintf(stdout, "%s\n", list->elem);
-	printlist(list->next);
+	int i;
+	for (i = 0; i < entries; i++)
+		fprintf(stdout, "%s\n", ents[i].name);
 }
 
 int
 main(void)
 {
 	node_head = xmalloc(sizeof(struct node));
-	list_head = xmalloc(sizeof(struct list));
 
 	node_head->path = xmalloc(strlen(topdir) + 1);
 	node_head->path = strcpy(node_head->path, topdir);
 	node_head->a = 0;
 	node_head->next = NULL;
 
-	list_head->elem = NULL;
-	list_head->next = NULL;
+	node_elems = 1;
 
 	srand(time(NULL));
 
 	subdir(node_head);
-	mklist(node_head, list_head);
+	mklist(node_head);
 
-	printlist(list_head);
+	printlist();
 
 	return 0;
 }
