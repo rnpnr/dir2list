@@ -13,19 +13,18 @@
 #define MUL_NO_OVERFLOW (1UL << (sizeof(size_t) * 4))
 
 struct node {
-	char *path;		/* Path containing media files */
-	int a;			/* Applied */
-	struct node *next;	/* next node */
+	char *path;	/* Path containing media files */
+	int a;		/* Applied */
 };
 
 struct entry {
 	char *name;
 };
 
-static struct node *node_head;
+static struct node *nodes;
 static struct entry *ents;
 
-static size_t node_elems;
+static size_t n_nodes;
 static size_t entries;
 
 static void
@@ -119,74 +118,52 @@ addfiles(const char *path)
 }
 
 /* Fill out the next field for all nodes */
-static struct node *
-subdir(struct node *node)
+static void
+subdir(const char *path)
 {
 	DIR *dir;
 	struct dirent *ent;
 	struct stat sb;
-	char *s, *t;
-	size_t s_len, t_len;
+	char *s;
+	size_t len;
 
-	if (!(dir = opendir(node->path)))
-		die("opendir(): failed to open: %s\n", node->path);
-
-	/* node changes in while() but we need this first path */
-	s_len = strlen(node->path) + 1;
-	s = xmalloc(s_len);
-	s_len = snprintf(s, s_len, "%s", node->path);
+	if (!(dir = opendir(path)))
+		die("opendir(): failed to open: %s\n", path);
 
 	while ((ent = readdir(dir))) {
+		len = strlen(path) + strlen(ent->d_name) + 2;
+		s = xmalloc(len);
+		len = snprintf(s, len, "%s/%s", path, ent->d_name);
 
-		t_len = s_len + strlen(ent->d_name) + 2;
-		t = xmalloc(t_len);
-		t_len = snprintf(t, t_len, "%s/%s", s, ent->d_name);
-
-		stat(t, &sb);
-		if (S_ISDIR(sb.st_mode)) {
-			if (!valid_dir(ent->d_name)) {
-				free(t);
-				continue;
-			}
-
-			node->next = xmalloc(sizeof(struct node));
-			node->next->path = xmalloc(t_len + 1);
-			node->next->path = strcpy(node->next->path, t);
-			node->next->a = 0;
-			node->next->next = NULL;
-
-			node_elems++;
-
-			/* recurse into subdir */
-			node = subdir(node->next);
-		}
-		free(t);
-	}
-	closedir(dir);
-	free(s);
-
-	/* Deepest node with no next pointer allocated */
-	return node;
-}
-
-static void
-mklist(struct node *node)
-{
-	struct node *o_node = node;
-	int i, j;
-	for (i = node_elems; i > 0;) {
-		for (j = rand() % node_elems; node && j > 0; j--)
-			node = node->next;
-
-		if (!node || node->a) {
-			node = o_node;
+		stat(s, &sb);
+		if (!S_ISDIR(sb.st_mode) || !valid_dir(ent->d_name)) {
+			free(s);
 			continue;
 		}
 
-		addfiles(node->path);
-		node->a = 1;
-		node = o_node;
-		i--;
+		nodes = reallocarray(nodes, n_nodes + 1, sizeof(struct node));
+		nodes[n_nodes].path = s;
+		nodes[n_nodes].a = 0;
+
+		/* recurse into subdir */
+		subdir(nodes[n_nodes++].path);
+	}
+	closedir(dir);
+}
+
+static void
+mklist(void)
+{
+	int i, j;
+	for (i = 0; i < n_nodes;) {
+		j = rand() % n_nodes;
+
+		if (nodes[j].a)
+			continue;
+
+		addfiles(nodes[j].path);
+		nodes[j].a = 1;
+		i++;
 	}
 }
 
@@ -201,19 +178,16 @@ printlist(void)
 int
 main(void)
 {
-	node_head = xmalloc(sizeof(struct node));
+	nodes = reallocarray(nodes, ++n_nodes, sizeof(struct node));
 
-	node_head->path = xmalloc(strlen(topdir) + 1);
-	node_head->path = strcpy(node_head->path, topdir);
-	node_head->a = 0;
-	node_head->next = NULL;
-
-	node_elems = 1;
+	nodes[0].path = xmalloc(strlen(topdir) + 1);
+	nodes[0].path = strcpy(nodes[0].path, topdir);
+	nodes[0].a = 0;
 
 	srand(time(NULL));
 
-	subdir(node_head);
-	mklist(node_head);
+	subdir(nodes[0].path);
+	mklist();
 
 	printlist();
 
