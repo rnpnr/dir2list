@@ -25,7 +25,7 @@ static struct node *nodes;
 static struct entry *ents;
 
 static size_t n_nodes;
-static size_t entries;
+static size_t n_ents;
 
 static void
 die(const char *fmt, ...)
@@ -104,17 +104,17 @@ addfiles(const char *path)
 		if (!valid_file(dent->d_name))
 			continue;
 
-		ents = reallocarray(ents, entries + 1, sizeof(struct entry));
+		ents = reallocarray(ents, n_ents + 1, sizeof(struct entry));
 
 		len = strlen(path) + strlen(dent->d_name) + 2;
 		s = xmalloc(len);
 		snprintf(s, len, "%s/%s", path, dent->d_name);
-		ents[entries++].name = s;
+		ents[n_ents++].name = s;
 		n++;
 	}
 	closedir(dir);
 
-	qsort(&ents[entries - n], n, sizeof(struct entry), namecmp);
+	qsort(&ents[n_ents - n], n, sizeof(struct entry), namecmp);
 }
 
 /* Fill out the next field for all nodes */
@@ -171,7 +171,7 @@ static void
 printlist(void)
 {
 	int i;
-	for (i = 0; i < entries; i++)
+	for (i = 0; i < n_ents; i++)
 		fprintf(stdout, "%s\n", ents[i].name);
 }
 
