@@ -95,38 +95,27 @@ addfiles(const char *path)
 {
 	DIR *dir;
 	struct dirent *dent;
-	struct entry *fents = NULL;
 	char *s;
-	int i;
-	size_t len, n = 0;
+	size_t len, n;
 
 	if (!(dir = opendir(path)))
 		die("opendir(): failed to open: %s\n", path);
 
-	while ((dent = readdir(dir))) {
+	for (n = 0; (dent = readdir(dir));) {
 		if (!valid_file(dent->d_name))
 			continue;
 
-		fents = reallocarray(fents, n + 1, sizeof(struct entry));
+		ents = reallocarray(ents, entries + 1, sizeof(struct entry));
 
 		len = strlen(path) + strlen(dent->d_name) + 2;
 		s = xmalloc(len);
 		snprintf(s, len, "%s/%s", path, dent->d_name);
-		fents[n++].name = s;
+		ents[entries++].name = s;
+		n++;
 	}
 	closedir(dir);
 
-	if (!n)
-		return;
-
-	qsort(fents, n, sizeof(struct entry), namecmp);
-
-	ents = reallocarray(ents, entries + n, sizeof(struct entry));
-
-	for (i = 0; i < n; i++, entries++)
-		ents[entries].name = fents[i].name;
-
-	free(fents);
+	qsort(&ents[entries - n], n, sizeof(struct entry), namecmp);
 }
 
 /* Fill out the next field for all nodes */
