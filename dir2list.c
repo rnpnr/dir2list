@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -38,6 +39,12 @@ die(const char *fmt, ...)
 	va_end(ap);
 
 	exit(1);
+}
+
+static void
+usage(const char *argv0)
+{
+	die("usage: %s [dir]\n", argv0);
 }
 
 static void *
@@ -177,12 +184,23 @@ printlist(void)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
+	struct stat sb;
+
+	if (argc != 2)
+		usage(argv[0]);
+
+	if (stat(argv[1], &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+		if (errno == ENOENT && argv[1][0] == '/')
+			die("dir: %s: does not exist\n", argv[1]);
+		usage(argv[0]);
+	}
+
 	nodes = reallocarray(nodes, ++n_nodes, sizeof(struct node));
 
-	nodes[0].path = xmalloc(strlen(topdir) + 1);
-	nodes[0].path = strcpy(nodes[0].path, topdir);
+	nodes[0].path = xmalloc(strlen(argv[1]) + 1);
+	nodes[0].path = strcpy(nodes[0].path, argv[1]);
 	nodes[0].a = 0;
 
 	srand(time(NULL));
