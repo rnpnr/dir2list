@@ -17,6 +17,7 @@ struct node {
 	int a;		/* Applied */
 };
 
+/* this makes calls to qsort nicer */
 struct entry {
 	char *name;
 };
@@ -61,7 +62,7 @@ reallocarray(void *p, size_t n, size_t s)
 }
 
 static int
-namecmp(const void *va, const void *vb)
+entcmp(const void *va, const void *vb)
 {
 	const struct entry *a = va, *b = vb;
 	return strcmp(a->name, b->name);
@@ -114,7 +115,7 @@ addfiles(const char *path)
 	}
 	closedir(dir);
 
-	qsort(&ents[n_ents - n], n, sizeof(struct entry), namecmp);
+	qsort(&ents[n_ents - n], n, sizeof(struct entry), entcmp);
 }
 
 /* Fill out the next field for all nodes */
